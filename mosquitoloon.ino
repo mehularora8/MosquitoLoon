@@ -36,52 +36,8 @@ int venttime = 0;
 
 static void smartdelay(unsigned long ms);
 static void print_date(TinyGPS &gps);
-static void initializeRockBlock();
 static void printData(float bmp_temp, float pres, float bmp_alt, float flat, float flon, float gps_alt);
 static void tryRB(float bmp_temp, float pres, float bmp_alt, float flat, float flon, float gps_alt, uint8_t *rxbuf);
-static void drop(uint8_t seconds) {
-  
-  Serial.print("Dropping for seconds: ");
-  Serial.println(seconds);
-  
-  Serial.println("Starting motor");
-  digitalWrite(23, HIGH);
-  delay(1000 * (int) seconds);
-  
-  Serial.println("Stopping motor"); 
-  digitalWrite(23, LOW);
-  
-}
-
-static void vent(uint8_t seconds) {
-  Serial.print("Venting for seconds: ");
-  Serial.println(seconds);
-  Serial.println("Starting motor OPEN");
-  digitalWrite(21, HIGH);
-  delay(250);
-  digitalWrite(20, HIGH);
-  delay(50);
-  Serial.println("Stopping motor OPEN");
-  digitalWrite(21, LOW);
-
-  digitalWrite(20, LOW);
-
-
-  delay(1000 * (int) seconds);
-
-  Serial.println("Starting motor CLOSE");
-  digitalWrite(20, HIGH);
-  delay(250);
-  //digitalWrite(20, HIGH);
-  //delay(50);
-  Serial.println("Stopping motor CLOSE");
-  digitalWrite(20, LOW);
-  //delay(50);
-  //digitalWrite(20, LOW);
-
-  
-  return;
-}
 
 void setup() {
   
@@ -107,21 +63,6 @@ void setup() {
   IridiumSerial.begin(19200);
   Serial.println("Rockblock starting");
 
-  // Initialize RockBlock modem
-  //initializeRockBlock();
-  //Serial.println("Rockblock ready");
-
-  // Initialize ballast control pin
-  pinMode(23, OUTPUT);
-  drop(5);
-  Serial.println("Ballast pin ready");
-
-  // Initialize vent control pin
-  pinMode(21, OUTPUT);
-  pinMode(20, OUTPUT);
-  vent(5);
-  Serial.println("Vent pin ready");
-
 }
 
 // Every 30 seconds
@@ -131,7 +72,7 @@ void loop() {
   // Getting data from BMP
   float bmp_temp = bme.readTemperature();
   float pres = bme.readPressure();
-  float bmp_alt = bme.readAltitude();
+  float bmp_alt = bme.readAltitude(1013.25);
 
   // Getting data from GPS
   float flat, flon;
@@ -148,27 +89,6 @@ void loop() {
   printData(bmp_temp, pres, bmp_alt, flat, flon, gps_alt);  
   uint8_t rxbuf[4] = {0, 0, 0, 0};
   tryRB(bmp_temp, pres, bmp_alt, flat, flon, gps_alt, rxbuf);
-  if (rxbuf[0] > 0) {
-    drop(rxbuf[0]);
-    secondsSince += rxbuf[0];
-    droptime += rxbuf[0];
-  }
-  if (rxbuf[1] > 0) {
-    vent(rxbuf[1]);
-    secondsSince += rxbuf[1];
-    venttime += rxbuf[1];
-  }
-  if (rxbuf[2] > 0) {
-    minTransTime = rxbuf[2]*60;
-    Serial.print("Setting min time to seconds: ");
-    Serial.println(rxbuf[2]*60);
-  }
-  
-  if (rxbuf[3] > 0) {
-    maxTransTime = rxbuf[3]*60;
-    Serial.print("Setting max time to seconds: ");
-    Serial.println(rxbuf[3]*60);
-  }
   
   
   delay(29000); // plus 1000 from smart delay = 30 seconds
