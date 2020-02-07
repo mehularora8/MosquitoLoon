@@ -127,7 +127,7 @@ void setup() {
 // Every 30 seconds
 void loop() {
 
-  Serial.println("k");
+  Serial.println("check");
   // Getting data from BMP
   float bmp_temp = bme.readTemperature();
   float pres = bme.readPressure();
