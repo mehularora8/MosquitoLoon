@@ -30,13 +30,10 @@ import os
 # C) Configuration file
 ################################################################################
 
-
+led = LED(18)
 camera = PiCamera()
 
 camera.resolution = (640, 480)
-camera.start_recording('my_video.h264')
-camera.wait_recording(60)
-camera.stop_recording()
 camera.iso = 60
 
 nb_frame=300
@@ -44,13 +41,18 @@ nb_frame=300
 duration_loading=120 #(sec)
 duration_flushing=20 #(sec)
 duration_aeration=30 #(sec)
+CLIP_DURATION = 10
 
 
 ################################################################################
 # E) Define simple functions making the whole sequence
 ################################################################################
 
-
+#function takes a video for CLIP_DURATION seconds and saves it with name number in Mosquitoloon folder
+def record(camera, filename):
+    camera.start_recording(filename)
+    camera.wait_recording(CLIP_DURATION)
+    camera.stop_recording()
 #First function to run in order to turn on the blue LED as well as the relay to make the I2C operationnal
 def start():
     
@@ -104,46 +106,49 @@ def image():
     #allow the camera to warm up
     #sleep(2)
     
-    for frame in range(nb_frame):
+    #for frame in range(nb_frame):
         
-        #turn the green LED ON (even if it's written off here)
-        #sleep(0.5)
+    #turn the green LED ON (even if it's written off here)
+    led.on()
+    #sleep(0.5)
+    
+    #get the actual date
+    date_now = datetime.now().strftime("%m_%d_%Y")
+    day_now="/home/pi/Desktop/Mosquitoloon/"+str(date_now)
+    
+    #create a directory if the directory doesn't exist yet
+    if not os.path.exists(day_now):
+        os.makedirs(day_now)
         
-        #get the actual date
-        date_now = datetime.now().strftime("%m_%d_%Y")
-        day_now="/home/pi/Desktop/Mosquitoloon/"+str(date_now)
-        
-        #create a directory if the directory doesn't exist yet
-        if not os.path.exists(day_now):
-            os.makedirs(day_now)
-            
-        #get the actual date
-        hour_now = datetime.now().strftime("%H")
-        hour="/home/pi/Desktop/Mosquitoloon/"+str(date_now)+"/"+str(hour_now)
-        
-        #create a directory if the directory doesn't exist yet
-        if not os.path.exists(hour):
-            os.makedirs(hour)
-        
-        #get the time now
-        time = datetime.now().strftime("%M_%S_%f")
-        #create a filename from the date and the timeq
-        filename="/home/pi/Desktop/Mosquitoloon/"+str(date_now)+"/"+str(hour_now)+"/"+str(time)+".jpg"
+    #get the actual date
+    hour_now = datetime.now().strftime("%H")
+    hour="/home/pi/Desktop/Mosquitoloon/"+str(date_now)+"/"+str(hour_now)
+    
+    #create a directory if the directory doesn't exist yet
+    if not os.path.exists(hour):
+        os.makedirs(hour)
+    
+    #get the time now
+    time = datetime.now().strftime("%M_%S_%f")
+    #create a filename from the date and the timeq
+    filename="/home/pi/Desktop/Mosquitoloon/"+str(date_now)+"/"+str(hour_now)+"/"+str(time)+".h264"
 
-        #capture an image with the specified filename
-        camera.capture(filename)
-        
-        #wait to complete the imaging process and print info on the terminal
-        print("Imaging : "+str(frame)+"/"+str(nb_frame))
-        print(datetime.now())
-        
-        #turn the green LED OFF (even if it's written on here)
-        #sleep(0.5)
+    #capture a video with the specified filename
+    #camera.capture(filename)
+    record(camera, filename)
+    
+    #wait to complete the imaging process and print info on the terminal
+    print("Imaging : "+str(frame)+"/"+str(nb_frame))
+    print(datetime.now())
+    
+    #turn the green LED OFF (even if it's written on here)
+    #sleep(0.5)
+    led.off()
  
     #stop the preview during the rest of the sequence
     camera.stop_preview()
     
-    #Inform on the statut of the operation
+    #Inform on the status of the operation
     print("Imaging : done")
 
 
@@ -169,7 +174,7 @@ def wait():
         print("Waiting : "+str(i)+"/"+str(delay))
         sleep(1) 
     
-    #Inform on the statut of the operation
+    #Inform on the status of the operation
     print("Waiting : done")
 
 
