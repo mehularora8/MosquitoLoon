@@ -10,6 +10,9 @@
 from gpiozero import LED
 from gpiozero import Servo
 
+#Servo control
+import pigpio
+
 #Allow to access the I2C BUS from the Raspberry Pi
 import smbus
 
@@ -30,6 +33,9 @@ import os
 # C) Configuration file
 ################################################################################
 
+pi = pigpio.pi()
+servoPin = 17
+
 led = LED(18)
 camera = PiCamera()
 
@@ -47,6 +53,14 @@ CLIP_DURATION = 10
 ################################################################################
 # E) Define simple functions making the whole sequence
 ################################################################################
+
+#function changes desired angle to pwm signal value
+def angleToPWM(angle):
+    if angle > 90:
+        angle = 90
+    elif angle < -90:
+        angle = -90
+    return 1500 + (angle * 500) / 90
 
 #function takes a video for CLIP_DURATION seconds and saves it with name number in Mosquitoloon folder
 def record(camera, filename):
@@ -109,7 +123,7 @@ def image():
     #for frame in range(nb_frame):
         
     #turn the green LED ON (even if it's written off here)
-    led.on()
+    
     #sleep(0.5)
     
     #get the actual date
@@ -143,7 +157,6 @@ def image():
     
     #turn the green LED OFF (even if it's written on here)
     #sleep(0.5)
-    led.off()
  
     #stop the preview during the rest of the sequence
     camera.stop_preview()
@@ -195,6 +208,7 @@ def stop():
 start()
 
 while True: 
+    led.on()
     init()
     image()
     wait()
