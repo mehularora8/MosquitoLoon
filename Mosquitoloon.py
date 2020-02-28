@@ -216,8 +216,8 @@ led.on()
 while True: # change this code to the real wait function
     init()
     image()
-    #wait()
-    sleep(10)
+    wait()
+    #sleep(15)
     
 stop()
 
