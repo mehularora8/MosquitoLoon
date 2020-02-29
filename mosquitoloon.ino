@@ -50,7 +50,7 @@ void setup() {
     
   //Initialize GPS port
   Serial1.begin(9600);
-   Serial.println("GPS maybe ready");
+  Serial.println("GPS maybe ready");
   
   // Initialize bmp
   if(bme.begin()) {

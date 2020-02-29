@@ -10,6 +10,9 @@
 from gpiozero import LED
 from gpiozero import Servo
 
+#Servo control
+import pigpio
+
 #Allow to access the I2C BUS from the Raspberry Pi
 import smbus
 
@@ -30,38 +33,49 @@ import os
 # C) Configuration file
 ################################################################################
 
+directory="/home/pi/Desktop/Mosquitoloon/"
 
+pi = pigpio.pi()
+SERVO_GPIO = 17
+
+led = LED(18)
 camera = PiCamera()
 
 camera.resolution = (640, 480)
-camera.start_recording('my_video.h264')
-camera.wait_recording(60)
-camera.stop_recording()
 camera.iso = 60
 
 nb_frame=300
 
-duration_loading=120 #(sec)
-duration_flushing=20 #(sec)
-duration_aeration=30 #(sec)
-
+CLIP_DURATION = 60
+BUFFER_CLIP_DURATION = 120
 
 ################################################################################
 # E) Define simple functions making the whole sequence
 ################################################################################
 
+#function changes desired angle to pwm signal value
+def angleToPWM(angle):
+    if angle > 90:
+        angle = 90
+    elif angle < -90:
+        angle = -90
+    return 1500 + (angle * 850) / 90
 
-#First function to run in order to turn on the blue LED as well as the relay to make the I2C operationnal
+#function takes a video for duration seconds and saves it with name number in Mosquitoloon folder
+def record(camera, filename, duration):
+    camera.start_recording(filename)
+    camera.wait_recording(duration)
+    camera.stop_recording()
+
+
+#First function to run in order to turn on the blue LED as well as the relay to make the I2C operational
 def start():
     
-    print("###############") 
     print("STARTING")
-    print("###############")
     
     #Inform on the statut of the operation
     print("Starting : engaged")
     
-    directory="/home/pi/Desktop/Mosquitoloon/"
     #create a directory if the directory doesn't exist yet
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -75,43 +89,36 @@ def start():
 #This function will prepare the pump and the valves to realize the loading operation
 def init():
     
-    print("###############") 
     print("INITIALIZING")
-    print("###############")
     
     #Inform on the statut of the operation
     print("Initializing : engaged")
 
-    
-    #Inform on the statut of the operation
+    #Inform on the status of the operation
     print("Initializing : done")
 
 
 ################################################################################
 
-#image is very a basci way to take images
+#This function records videos using camera modules 
 def image():
     
-    print("###############") 
     print("IMAGING")
-    print("###############")
     
     #Inform on the statut of the operation
     print("Imaging : engaged")
     
     #start the preview only during the acquisition
     camera.start_preview(fullscreen=False, window = (160, 0, 640, 480)) #x,y,w,h
-    #allow the camera to warm up
-    #sleep(2)
-    
-    for frame in range(nb_frame):
-        
-        #turn the green LED ON (even if it's written off here)
-        #sleep(0.5)
-        
+
+    for i in range(5):
+        #set the angle to take a video from
+        angle = 36 * i - 90
+        pi.set_servo_pulsewidth(SERVO_GPIO, angleToPWM(angle))
+
         #get the actual date
         date_now = datetime.now().strftime("%m_%d_%Y")
-        day_now="/home/pi/Desktop/Mosquitoloon/"+str(date_now)
+        day_now = directory + str(date_now)
         
         #create a directory if the directory doesn't exist yet
         if not os.path.exists(day_now):
@@ -119,7 +126,7 @@ def image():
             
         #get the actual date
         hour_now = datetime.now().strftime("%H")
-        hour="/home/pi/Desktop/Mosquitoloon/"+str(date_now)+"/"+str(hour_now)
+        hour = directory + str(date_now) + "/" + str(hour_now)
         
         #create a directory if the directory doesn't exist yet
         if not os.path.exists(hour):
@@ -127,72 +134,74 @@ def image():
         
         #get the time now
         time = datetime.now().strftime("%M_%S_%f")
-        #create a filename from the date and the timeq
-        filename="/home/pi/Desktop/Mosquitoloon/"+str(date_now)+"/"+str(hour_now)+"/"+str(time)+".jpg"
 
-        #capture an image with the specified filename
-        camera.capture(filename)
-        
-        #wait to complete the imaging process and print info on the terminal
-        print("Imaging : "+str(frame)+"/"+str(nb_frame))
-        print(datetime.now())
-        
-        #turn the green LED OFF (even if it's written on here)
-        #sleep(0.5)
- 
+        #create a filename from the date and the timeq
+        filename = directory + str(date_now) + "/" + str(hour_now) + "/"+str(time) + ".h264"
+
+        #capture a video with the specified filename
+        record(camera, filename, CLIP_DURATION)
+
+    
     #stop the preview during the rest of the sequence
     camera.stop_preview()
     
-    #Inform on the statut of the operation
+    #Inform on the status of the operation
     print("Imaging : done")
 
 
-################################################################################
-
 #wait will make the pi sleep until the next hour
 def wait():
-    
-    print("###############") 
-    print("WAITING")
-    print("###############")
-    
-    #Inform on the statut of the operation
-    print("Waiting : engaged")
-    
-    # Calculate the delay to the start of the next hour
-    next_hour = (datetime.now() + timedelta(hours=1)).replace(
-    minute=0, second=0, microsecond=0)
-    delay = (next_hour - datetime.now()).seconds
-    
-    #wait to complete the waiting process and print info on the terminal
-    for i in range(delay):
-        print("Waiting : "+str(i)+"/"+str(delay))
-        sleep(1) 
-    
-    #Inform on the statut of the operation
-    print("Waiting : done")
 
+    #get the actual date
+        date_now = datetime.now().strftime("%m_%d_%Y")
+        day_now = directory + str(date_now)
+        
+        #create a directory if the directory doesn't exist yet
+        if not os.path.exists(day_now):
+            os.makedirs(day_now)
+            
+        #get the actual date
+        hour_now = datetime.now().strftime("%H")
+        hour = directory + str(date_now) + "/" + str(hour_now)
+        
+        #create a directory if the directory doesn't exist yet
+        if not os.path.exists(hour):
+            os.makedirs(hour)
+        
+        #get the time now
+        time = datetime.now().strftime("%M_%S_%f")
+        buffer_directory = directory + str(date_now)+"/"+str(hour_now)+"/"+str(time)+"BUF.h264"
+        
+        print("WAITING")
+        
+        #Inform on the statut of the operation
+        print("Waiting : engaged")
 
-################################################################################
+        print("Recording buffer now")
+        # Buffer record for 2 minutes
+        record(camera, buffer_directory, BUFFER_CLIP_DURATION)
+        
+        #Inform on the status of the operation
+        print("Waiting : done")
+
 
 #stop will turn off the green LED and turn on the red one
 def stop():
-    
     #Inform on the statut of the operation
     print("The sequence is done.")
 
 
-################################################################################
-# F) Execute the sequence
-################################################################################
-
-
-start()
-
-while True: 
+#Main function
+def main():
+    start()
+    led.on()
     init()
-    image()
-    wait()
-    
-stop()
+
+    while True:
+        wait()
+        image()
+        
+    stop()
+
+main()
 
