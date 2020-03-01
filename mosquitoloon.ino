@@ -12,6 +12,7 @@
  
 #include <Wire.h>
 #include <SPI.h>
+#include <SD.h>
 #include <TinyGPS.h>
 #include <IridiumSBD.h>
 #include <Adafruit_Sensor.h>
@@ -26,7 +27,8 @@ TinyGPS gps;
 IridiumSBD modem(IridiumSerial);
 
 // BMP
- Adafruit_BMP280 bme;
+Adafruit_BMP280 bme;
+
 
 int minTransTime = 0*60; // Will try to send if greater than this and signal quality > 2
 int maxTransTime = 0*60; // Will try to send if greater than this regardless of signal quality
@@ -63,6 +65,12 @@ void setup() {
   IridiumSerial.begin(19200);
   Serial.println("Rockblock starting");
 
+  pinMode(9, OUTPUT);
+  pinMode(10, OUTPUT);
+
+  const int ChipSelect = 4;
+  
+  SD.begin(ChipSelect);
 }
 
 // Every 30 seconds
@@ -88,9 +96,33 @@ void loop() {
 
   printData(bmp_temp, pres, bmp_alt, flat, flon, gps_alt);  
   uint8_t rxbuf[4] = {0, 0, 0, 0};
-  tryRB(bmp_temp, pres, bmp_alt, flat, flon, gps_alt, rxbuf);
-  
-  
+  //tryRB(bmp_temp, pres, bmp_alt, flat, flon, gps_alt, rxbuf);
+
+  File mosquitoloon = SD.open("mosquitoloon.txt", FILE_WRITE);
+
+  if(!mosquitoloon){
+    Serial.println("init failed");
+  }
+
+  char buff[20] = "";
+  char toSend[49] = "";
+  toSend[48] = '\0';
+  dtostrf(bmp_temp, 4, 1, buff);
+  strcat(toSend, "Temp: ");
+  strcat(toSend, buff);
+  strcat(toSend, ", Pres: ");
+  dtostrf(pres, 6, 0, buff);
+  strcat(toSend, buff);
+  strcat(toSend, ", Alt: ");
+  dtostrf(bmp_alt, 5 , 0, buff);
+  strcat(toSend, buff);
+  Serial.println("String to print to SD:");
+  Serial.println(toSend);
+
+  mosquitoloon.write(toSend);
+
+  mosquitoloon.close();
+
   delay(29000); // plus 1000 from smart delay = 30 seconds
 
   secondsSince += 30;
@@ -104,21 +136,6 @@ static void printData(float bmp_temp, float pres, float bmp_alt, float flat, flo
   Serial.println(pres);  // Pressure
   Serial.print("bmp altitude = ");
   Serial.println(bmp_alt); // BMP Altitude (approximated)
-
-  Serial.print("gps lat = ");
-  Serial.println(flat);  // GPS Latitude
-  Serial.print("gps lon = ");
-  Serial.println(flon);  // GPS Longitude
-  Serial.print("gps alt = ");
-  Serial.println(gps_alt); // GPS Altitude
-  Serial.print("droptime = ");
-  Serial.println(droptime);
-  Serial.print("venttime = ");
-  Serial.println(venttime);
-  Serial.print("mintime = ");
-  Serial.println(minTransTime);
-  Serial.print("maxtime = ");
-  Serial.println(maxTransTime);
 }
 
 static void initializeRockBlock() {
